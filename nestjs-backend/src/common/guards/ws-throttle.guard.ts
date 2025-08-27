@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModuleOptions, ThrottlerStorage } from '@nestjs/throttler';
+import { Reflector } from '@nestjs/core';
 import { Socket } from 'socket.io';
 
 /**
@@ -41,8 +42,12 @@ export class WsThrottleGuard extends ThrottlerGuard {
     },
   };
 
-  constructor() {
-    super();
+  constructor(
+    options: ThrottlerModuleOptions = { throttlers: [] },
+    storageService: ThrottlerStorage,
+    reflector: Reflector,
+  ) {
+    super(options, storageService, reflector);
     
     // Clean up old entries every 5 minutes
     setInterval(() => {
@@ -54,7 +59,7 @@ export class WsThrottleGuard extends ThrottlerGuard {
    * Check if client is allowed to send message
    */
   async canActivate(context: any): Promise<boolean> {
-    const client = context.switchToWs().getClient<Socket>();
+    const client = context.switchToWs().getClient() as Socket;
     const data = context.switchToWs().getData();
     const clientId = client.id;
     const username = client.data?.username || 'anonymous';

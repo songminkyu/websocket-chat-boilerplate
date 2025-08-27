@@ -35,9 +35,9 @@ export class WsExceptionFilter extends BaseWsExceptionFilter {
     if (typeof error === 'string') {
       errorMessage = error;
     } else if (typeof error === 'object' && error !== null) {
-      errorMessage = error.message || errorMessage;
-      errorCode = error.code || errorCode;
-      statusCode = error.statusCode || statusCode;
+      errorMessage = (error as any).message || errorMessage;
+      errorCode = (error as any).code || errorCode;
+      statusCode = (error as any).statusCode || statusCode;
     }
 
     // Create error response

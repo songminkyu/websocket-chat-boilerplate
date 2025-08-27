@@ -62,7 +62,7 @@ websocket-chat/
 ## 📋 Prerequisites
 
 - **Node.js**: 18.0.0 or higher
-- **npm**: 8.0.0 or higher  
+- **pnpm**: 8.0.0 or higher  
 - **Java**: JDK 17 or higher (for Spring Boot)
 - **Gradle**: 8.4 or higher (wrapper included)
 
@@ -86,16 +86,16 @@ cd spring-boot-backend
 #### Option B: NestJS Backend  
 ```bash
 cd nestjs-backend
-npm install
-npm run start:dev
+pnpm install
+pnpm run start:dev
 # Server runs on http://localhost:3001
 ```
 
 ### 3. Start Frontend
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 # Client runs on http://localhost:3000
 ```
 
@@ -192,17 +192,17 @@ cd spring-boot-backend
 #### NestJS
 ```bash
 cd nestjs-backend
-npm run test                      # Run unit tests  
-npm run test:e2e                  # Run end-to-end tests
-npm run test:cov                  # Generate coverage report
+pnpm run test                      # Run unit tests  
+pnpm run test:e2e                  # Run end-to-end tests
+pnpm run test:cov                  # Generate coverage report
 ```
 
 #### Frontend
 ```bash
 cd frontend
-npm run test                      # Run unit tests
-npm run test:ui                   # Run tests with UI
-npm run test:coverage             # Generate coverage report
+pnpm run test                      # Run unit tests
+pnpm run test:ui                   # Run tests with UI
+pnpm run test:coverage             # Generate coverage report
 ```
 
 ### Code Quality
@@ -216,16 +216,16 @@ npm run test:coverage             # Generate coverage report
 
 #### NestJS  
 ```bash
-npm run lint                      # ESLint validation
-npm run format                    # Prettier formatting
-npm audit                         # Security vulnerability scan
+pnpm run lint                      # ESLint validation
+pnpm run format                    # Prettier formatting
+pnpm audit                         # Security vulnerability scan
 ```
 
 #### Frontend
 ```bash
-npm run lint                      # Next.js + ESLint validation  
-npm run type-check                # TypeScript compilation check
-npm audit                         # Dependency security scan
+pnpm run lint                      # Next.js + ESLint validation  
+pnpm run type-check                # TypeScript compilation check
+pnpm audit                         # Dependency security scan
 ```
 
 ## 🚀 Production Deployment
@@ -245,10 +245,10 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]
 FROM node:18-alpine
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production
+RUN pnpm install --prod --frozen-lockfile
 COPY dist ./dist
 EXPOSE 3001
-CMD ["npm", "run", "start:prod"]
+CMD ["pnpm", "run", "start:prod"]
 ```
 
 #### Frontend
@@ -256,7 +256,7 @@ CMD ["npm", "run", "start:prod"]
 FROM node:18-alpine
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production
+RUN pnpm install --prod --frozen-lockfile
 COPY .next/standalone ./
 COPY .next/static ./.next/static
 EXPOSE 3000
@@ -271,10 +271,10 @@ CMD ["node", "server.js"]
 cd spring-boot-backend && ./gradlew bootJar
 
 # NestJS  
-cd nestjs-backend && npm run build
+cd nestjs-backend && pnpm run build
 
 # Frontend
-cd frontend && npm run build
+cd frontend && pnpm run build
 ```
 
 #### Docker Compose
@@ -375,10 +375,10 @@ lsof -ti:3000 | xargs kill -9    # Kill Next.js
 ./gradlew clean build --refresh-dependencies
 
 # NestJS - Clear cache and reinstall
-rm -rf node_modules package-lock.json && npm install
+rm -rf node_modules pnpm-lock.yaml && pnpm install
 
 # Frontend - Clear Next.js cache
-rm -rf .next node_modules && npm install
+rm -rf .next node_modules && pnpm install
 ```
 
 ### Debug Mode
@@ -391,13 +391,13 @@ rm -rf .next node_modules && npm install
 
 #### NestJS
 ```bash
-npm run start:debug
+pnpm run start:debug
 # Connect debugger to port 9229
 ```
 
 #### Frontend
 ```bash
-npm run dev
+pnpm run dev
 # Debug in browser DevTools
 ```
 

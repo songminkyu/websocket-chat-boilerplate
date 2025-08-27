@@ -5,16 +5,7 @@
   "compilerOptions": {
     "deleteOutDir": true,
     "watchAssets": true,
-    "assets": ["**/*.json", "**/*.md"],
-    "plugins": [
-      {
-        "name": "@nestjs/swagger",
-        "options": {
-          "classValidatorShim": false,
-          "introspectComments": true
-        }
-      }
-    ]
+    "assets": ["**/*.json", "**/*.md"]
   },
   "projects": {
     "nestjs-websocket-chat": {

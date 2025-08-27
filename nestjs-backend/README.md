@@ -39,7 +39,7 @@ src/
 ## 📋 Prerequisites
 
 - Node.js 18.x or higher
-- npm 8.x or higher
+- pnpm 8.x or higher
 - TypeScript 5.x
 
 ## 🛠️ Installation
@@ -47,7 +47,7 @@ src/
 1. **Install dependencies**:
    ```bash
    cd nestjs-backend
-   npm install
+   pnpm install
    ```
 
 2. **Configure environment**:
@@ -58,7 +58,7 @@ src/
 
 3. **Start development server**:
    ```bash
-   npm run start:dev
+   pnpm run start:dev
    ```
 
 The server will start on `http://localhost:3001`
@@ -120,16 +120,16 @@ THROTTLE_LIMIT=100           # Rate limiting count
 
 ```bash
 # Run unit tests
-npm run test
+pnpm run test
 
 # Run e2e tests
-npm run test:e2e
+pnpm run test:e2e
 
 # Run test coverage
-npm run test:cov
+pnpm run test:cov
 
 # Watch mode
-npm run test:watch
+pnpm run test:watch
 ```
 
 ## 📊 Monitoring
@@ -166,13 +166,13 @@ Available through the WsThrottleGuard service (programmatic access)
 
 ### Development
 ```bash
-npm run start:dev
+pnpm run start:dev
 ```
 
 ### Production
 ```bash
-npm run build
-npm run start:prod
+pnpm run build
+pnpm run start:prod
 ```
 
 ### Docker
@@ -199,8 +199,8 @@ npm run start:debug
 
 ### Linting
 ```bash
-npm run lint
-npm run format
+pnpm run lint
+pnpm run format
 ```
 
 ## 📈 Performance
