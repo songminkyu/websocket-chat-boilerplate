@@ -52,7 +52,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         
         {/* DNS prefetch for backend connections */}
-        <link rel="dns-prefetch" href="//localhost:8080" />
+        <link rel="dns-prefetch" href="//localhost:3001" />
       </head>
       <body 
         className={`

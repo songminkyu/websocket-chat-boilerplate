@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   
   // TypeScript configuration
   typescript: {
@@ -15,8 +14,8 @@ const nextConfig = {
   
   // Environment variables
   env: {
-    NEXT_PUBLIC_WEBSOCKET_URL: process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'http://localhost:8080',
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api',
+    NEXT_PUBLIC_WEBSOCKET_URL: process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'http://localhost:3001',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
   },
   
   // Development configuration
@@ -25,11 +24,11 @@ const nextConfig = {
       return [
         {
           source: '/api/:path*',
-          destination: 'http://localhost:8080/api/:path*',
+          destination: 'http://localhost:3001/api/:path*',
         },
         {
           source: '/ws/:path*', 
-          destination: 'http://localhost:8080/ws/:path*',
+          destination: 'http://localhost:3001/ws/:path*',
         }
       ];
     },
@@ -58,11 +57,8 @@ const nextConfig = {
     ];
   },
   
-  // Experimental features
-  experimental: {
-    appDir: true,
-    typedRoutes: true,
-  },
+  // Typed routes
+  typedRoutes: true,
   
   // Image optimization
   images: {

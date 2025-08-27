@@ -9,9 +9,9 @@
  * Environment configuration
  */
 export const ENV = {
-  // Backend URLs
-  WEBSOCKET_URL: process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'http://localhost:8080',
-  API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api',
+  // Backend URLs - Updated for NestJS backend
+  WEBSOCKET_URL: process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'http://localhost:3001',
+  API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
   
   // Development flags
   IS_DEVELOPMENT: process.env.NODE_ENV === 'development',

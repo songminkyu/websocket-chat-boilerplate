@@ -19,19 +19,12 @@ interface ChatRoomProps {
 }
 
 /**
- * Main ChatRoom component that combines all chat functionality
- * 
- * Features:
- * - Real-time message display and sending
- * - User presence indication
- * - Connection status monitoring
- * - Responsive layout with optional user list
- * - Loading and error states
+ * Compact ChatRoom component with horizontal layout like Telegram/WhatsApp
  */
 export const ChatRoom: React.FC<ChatRoomProps> = ({
   roomId,
   roomName,
-  showUserList = true,
+  showUserList = false,
   className,
 }) => {
   const {
@@ -72,100 +65,59 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
    */
   if (isLoading && !currentRoomId) {
     return (
-      <div className="flex items-center justify-center h-full bg-secondary-50">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
-          <p className="text-secondary-600 font-medium">Connecting to chat...</p>
+      <div className="flex items-center justify-center h-full">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-meta">Connecting...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div
-      className={clsx(
-        'flex h-full bg-white overflow-hidden',
-        className
-      )}
-    >
+    <div className={clsx('flex h-full bg-white', className)}>
       {/* Main chat area */}
       <div className="flex flex-col flex-1 min-w-0">
-        {/* Chat header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-secondary-200 bg-white">
+        {/* Compact chat header */}
+        <div className="chat-header">
           <div className="flex items-center gap-3">
+            {/* Room avatar */}
+            <div className="avatar-sm bg-secondary-500">
+              #
+            </div>
+            
             {/* Room info */}
-            <div className="flex flex-col">
-              <h2 className="text-lg font-semibold text-secondary-900">
+            <div className="flex-1 min-w-0">
+              <h2 className="font-semibold text-sm text-secondary-900 truncate">
                 {roomName || `Room ${currentRoomId?.substring(0, 8)}`}
               </h2>
-              <div className="flex items-center gap-2 text-sm text-secondary-600">
+              <div className="flex items-center gap-2 text-meta">
                 <span>
-                  {activeUsers.length} user{activeUsers.length !== 1 ? 's' : ''} online
+                  {activeUsers.length} member{activeUsers.length !== 1 ? 's' : ''}
                 </span>
-                <span className="w-1 h-1 bg-secondary-400 rounded-full" />
-                <ConnectionStatus 
-                  status={connectionStatus}
-                  className="text-sm"
-                />
+                {activeUsers.length > 0 && (
+                  <>
+                    <span>•</span>
+                    <ConnectionStatus status={connectionStatus} className="text-meta" />
+                  </>
+                )}
               </div>
             </div>
           </div>
 
           {/* Header actions */}
-          <div className="flex items-center gap-2">
-            {/* User list toggle (mobile) */}
-            {showUserList && (
-              <button
-                className={clsx(
-                  'p-2 rounded-lg text-secondary-600 hover:bg-secondary-100 transition-colors md:hidden',
-                  'focus:outline-none focus:ring-2 focus:ring-primary-500'
-                )}
-                aria-label="Toggle user list"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"
-                  />
-                </svg>
-              </button>
-            )}
-
-            {/* Settings menu */}
-            <button
-              className={clsx(
-                'p-2 rounded-lg text-secondary-600 hover:bg-secondary-100 transition-colors',
-                'focus:outline-none focus:ring-2 focus:ring-primary-500'
-              )}
-              aria-label="Chat settings"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
+          <div className="flex items-center gap-1">
+            {/* Search */}
+            <button className="btn-icon" title="Search">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
+            
+            {/* More options */}
+            <button className="btn-icon" title="More">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
               </svg>
             </button>
           </div>
@@ -173,41 +125,21 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 
         {/* Error banner */}
         {error && (
-          <div className="px-4 py-2 bg-error-50 border-b border-error-200">
+          <div className="px-4 py-2 bg-red-50 border-b border-red-200">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-error-800">
-                <svg
-                  className="w-5 h-5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                    clipRule="evenodd"
-                  />
+              <div className="flex items-center gap-2 text-red-700">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
-                <span className="text-sm font-medium">{error}</span>
+                <span className="text-sm">{error}</span>
               </div>
               <button
                 onClick={clearError}
-                className="text-error-600 hover:text-error-800 transition-colors"
-                aria-label="Dismiss error"
+                className="text-red-600 hover:text-red-800"
+                title="Dismiss"
               >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
@@ -218,19 +150,20 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         <MessageList
           messages={messages}
           currentUsername={username}
-          className="flex-1"
+          className="chat-messages"
         />
 
         {/* Message input */}
         <MessageInput
           onSendMessage={handleSendMessage}
           disabled={!isConnected || !username}
+          className="chat-input"
         />
       </div>
 
-      {/* User list sidebar */}
+      {/* User list sidebar (compact, only on larger screens) */}
       {showUserList && (
-        <div className="hidden md:flex md:flex-col w-64 border-l border-secondary-200 bg-secondary-50">
+        <div className="hidden lg:flex lg:flex-col w-60 border-l border-secondary-200 bg-secondary-50">
           <UserList
             users={activeUsers}
             currentUsername={username}

@@ -1,0 +1,202 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Modern CSS Custom Properties */
+:root {
+  /* Compact Color Palette for Messenger Style */
+  --primary-50: #eff6ff;
+  --primary-100: #dbeafe;
+  --primary-200: #bfdbfe;
+  --primary-300: #93c5fd;
+  --primary-400: #60a5fa;
+  --primary-500: #3b82f6;
+  --primary-600: #2563eb;
+  --primary-700: #1d4ed8;
+  --primary-800: #1e40af;
+  --primary-900: #1e3a8a;
+
+  --secondary-50: #f8fafc;
+  --secondary-100: #f1f5f9;
+  --secondary-200: #e2e8f0;
+  --secondary-300: #cbd5e1;
+  --secondary-400: #94a3b8;
+  --secondary-500: #64748b;
+  --secondary-600: #475569;
+  --secondary-700: #334155;
+  --secondary-800: #1e293b;
+  --secondary-900: #0f172a;
+
+  --success-500: #10b981;
+  --warning-500: #f59e0b;
+  --error-500: #ef4444;
+
+  /* Compact Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+}
+
+/* Base Styles */
+@layer base {
+  html {
+    @apply antialiased;
+  }
+  
+  body {
+    @apply bg-white text-secondary-900 font-sans;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  /* Compact Scrollbar */
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-secondary-100;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-secondary-300 rounded-full;
+  }
+}
+
+/* Messenger-Style Components */
+@layer components {
+  /* Compact Avatar */
+  .avatar-sm {
+    @apply w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs font-medium;
+  }
+
+  .avatar-xs {
+    @apply w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs font-medium;
+  }
+
+  /* Compact Message Bubbles */
+  .msg-bubble {
+    @apply max-w-xs rounded-2xl px-3 py-2 text-sm break-words;
+  }
+
+  .msg-bubble-sent {
+    @apply bg-primary-500 text-white ml-auto;
+    border-bottom-right-radius: 4px;
+  }
+
+  .msg-bubble-received {
+    @apply bg-secondary-100 text-secondary-900 mr-auto;
+    border-bottom-left-radius: 4px;
+  }
+
+  .msg-bubble-system {
+    @apply bg-secondary-100 text-secondary-600 text-xs px-2 py-1 rounded-full mx-auto text-center;
+  }
+
+  /* Compact Input */
+  .input-compact {
+    @apply bg-secondary-50 border border-secondary-200 rounded-2xl px-4 py-2 text-sm;
+    @apply focus:outline-none focus:border-primary-400 focus:bg-white;
+    @apply transition-all duration-200;
+  }
+
+  /* Compact Button */
+  .btn-compact {
+    @apply bg-primary-500 text-white rounded-full p-2 hover:bg-primary-600;
+    @apply transition-colors duration-200 flex items-center justify-center;
+  }
+
+  .btn-icon {
+    @apply p-1.5 text-secondary-500 hover:text-primary-500 hover:bg-primary-50 rounded-full;
+    @apply transition-all duration-200;
+  }
+
+  /* Chat Layout */
+  .chat-container {
+    @apply h-screen flex flex-col bg-white;
+  }
+
+  .chat-header {
+    @apply flex items-center justify-between px-4 py-3 border-b border-secondary-200 bg-white;
+  }
+
+  .chat-messages {
+    @apply flex-1 overflow-y-auto px-4 py-2;
+  }
+
+  .chat-input {
+    @apply border-t border-secondary-200 bg-white px-4 py-3;
+  }
+
+  /* Message List */
+  .message-item {
+    @apply flex items-end gap-2 mb-2;
+  }
+
+  .message-item-sent {
+    @apply flex-row-reverse;
+  }
+
+  .message-item-received {
+    @apply flex-row;
+  }
+
+  /* Compact Status Indicator */
+  .status-online {
+    @apply w-2 h-2 bg-success-500 rounded-full;
+  }
+
+  .status-offline {
+    @apply w-2 h-2 bg-secondary-400 rounded-full;
+  }
+
+  /* Hover Effects (Minimal) */
+  .hover-subtle {
+    @apply hover:bg-secondary-50 transition-colors duration-200;
+  }
+
+  /* Typography Compact */
+  .text-compact {
+    @apply text-sm leading-tight;
+  }
+
+  .text-meta {
+    @apply text-xs text-secondary-500;
+  }
+}
+
+/* Utility Classes */
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-600 to-primary-500 bg-clip-text text-transparent;
+  }
+
+  /* Compact spacing utilities */
+  .gap-compact {
+    gap: 0.375rem;
+  }
+
+  .p-compact {
+    padding: 0.375rem;
+  }
+}
+
+/* Mobile-first responsive */
+@media (max-width: 768px) {
+  .msg-bubble {
+    @apply max-w-[280px];
+  }
+  
+  .chat-header {
+    @apply px-3 py-2;
+  }
+  
+  .chat-messages {
+    @apply px-3;
+  }
+  
+  .chat-input {
+    @apply px-3 py-2;
+  }
+}

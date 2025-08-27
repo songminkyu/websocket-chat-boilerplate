@@ -14,7 +14,6 @@ import {
   ConnectionStatus
 } from '@/types/chat';
 import { 
-  DESTINATIONS, 
   DEFAULTS, 
   UI_CONFIG, 
   STORAGE_CONFIG,
@@ -185,13 +184,11 @@ export const useChat = (): UseChatReturn => {
     subscriptionsRef.current.clear();
 
     // Subscribe to room messages
-    const messageDestination = `${DESTINATIONS.ROOM_MESSAGES}${roomId}`;
-    const messageUnsubscribe = subscribe(messageDestination, handleChatMessage);
+    const messageUnsubscribe = subscribe('message', handleChatMessage);
     subscriptionsRef.current.add(messageUnsubscribe);
 
     // Subscribe to user status updates
-    const statusDestination = `${DESTINATIONS.USER_STATUS}${roomId}`;
-    const statusUnsubscribe = subscribe(statusDestination, handleUserStatus);
+    const statusUnsubscribe = subscribe('userStatus', handleUserStatus);
     subscriptionsRef.current.add(statusUnsubscribe);
 
     console.log('🔔 Subscribed to room:', roomId);
@@ -213,20 +210,38 @@ export const useChat = (): UseChatReturn => {
       // Connect WebSocket first
       wsConnect();
       
-      // Wait for connection to be established
+      // Wait for connection with improved polling and timeout handling
       await new Promise<void>((resolve, reject) => {
+        const maxAttempts = 100; // 10 seconds total (100ms * 100)
+        let attempts = 0;
+        let timeoutId: NodeJS.Timeout;
+        
         const checkConnection = () => {
-          if (isConnected) {
+          attempts++;
+          
+          if (connectionStatus === ConnectionStatus.CONNECTED) {
+            clearTimeout(timeoutId);
             resolve();
-          } else if (connectionStatus === ConnectionStatus.ERROR) {
-            reject(new Error(ERROR_MESSAGES.CONNECTION_FAILED));
-          } else {
-            setTimeout(checkConnection, 100);
+            return;
           }
+          
+          if (connectionStatus === ConnectionStatus.ERROR) {
+            clearTimeout(timeoutId);
+            reject(new Error(`${ERROR_MESSAGES.CONNECTION_FAILED}: ${connectionStatus}`));
+            return;
+          }
+          
+          if (attempts >= maxAttempts) {
+            clearTimeout(timeoutId);
+            reject(new Error(`${ERROR_MESSAGES.CONNECTION_FAILED}: Timeout after ${maxAttempts * 100}ms`));
+            return;
+          }
+          
+          // Continue checking
+          timeoutId = setTimeout(checkConnection, 100);
         };
         
-        // Timeout after 10 seconds
-        setTimeout(() => reject(new Error(ERROR_MESSAGES.CONNECTION_FAILED)), 10000);
+        // Start the first check immediately
         checkConnection();
       });
       
@@ -237,11 +252,19 @@ export const useChat = (): UseChatReturn => {
       
     } catch (err) {
       console.error('❌ Connection failed:', err);
-      setError(err instanceof Error ? err.message : ERROR_MESSAGES.CONNECTION_FAILED);
+      const errorMessage = err instanceof Error ? err.message : ERROR_MESSAGES.CONNECTION_FAILED;
+      setError(errorMessage);
+      
+      // Ensure WebSocket is properly disconnected on failure
+      try {
+        wsDisconnect();
+      } catch (disconnectErr) {
+        console.warn('⚠️ Error during cleanup disconnect:', disconnectErr);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [wsConnect, isConnected, connectionStatus, saveToStorage]);
+  }, [wsConnect, wsDisconnect, connectionStatus, saveToStorage]);
 
   /**
    * Disconnect from chat
@@ -272,11 +295,20 @@ export const useChat = (): UseChatReturn => {
   }, [currentRoomId, username, wsDisconnect]);
 
   /**
-   * Join a chat room
+   * Join a chat room with improved error handling
    */
   const joinRoom = useCallback(async (roomId: string, roomName?: string) => {
-    if (!isConnected || !username) {
-      setError(ERROR_MESSAGES.USERNAME_REQUIRED);
+    // Validate connection state
+    if (connectionStatus !== ConnectionStatus.CONNECTED) {
+      const errorMsg = `Cannot join room: Connection status is ${connectionStatus}`;
+      console.error('❌', errorMsg);
+      setError(`${ERROR_MESSAGES.JOIN_ROOM_FAILED}: ${errorMsg}`);
+      return;
+    }
+
+    if (!username) {
+      console.error('❌ Cannot join room: Username is required');
+      setError(`${ERROR_MESSAGES.JOIN_ROOM_FAILED}: Username is required`);
       return;
     }
 
@@ -284,22 +316,26 @@ export const useChat = (): UseChatReturn => {
     setError(null);
 
     try {
-      // Leave current room first
+      // Leave current room first (but don't wait if it's the same room)
       if (currentRoomId && currentRoomId !== roomId) {
-        await leaveRoom();
+        try {
+          await leaveRoom();
+        } catch (leaveErr) {
+          console.warn('⚠️ Failed to leave previous room cleanly, continuing with join:', leaveErr);
+          // Continue with join even if leave fails
+        }
       }
 
       // Subscribe to new room
       subscribeToRoom(roomId);
       
-      // Send join message
-      const joinMessage: ChatMessageDto = {
+      // Send join message (should match JoinRoomDto format)
+      const joinMessage = {
         roomId,
         sender: username,
-        content: `${username} joined the room`,
       };
       
-      wsSendMessage(DESTINATIONS.ADD_USER, joinMessage);
+      wsSendMessage('chat.addUser', joinMessage);
       
       // Update state
       setCurrentRoomId(roomId);
@@ -309,15 +345,17 @@ export const useChat = (): UseChatReturn => {
       // Save to storage
       saveToStorage(STORAGE_CONFIG.KEYS.LAST_ROOM, roomId);
       
-      console.log('🚪 Joined room:', roomId);
+      console.log('🚪 Joined room:', roomId, roomName ? `(${roomName})` : '');
       
     } catch (err) {
+      const errorDetail = err instanceof Error ? err.message : 'Unknown error';
+      const fullError = `${ERROR_MESSAGES.JOIN_ROOM_FAILED}: ${errorDetail}`;
       console.error('❌ Failed to join room:', err);
-      setError(ERROR_MESSAGES.JOIN_ROOM_FAILED);
+      setError(fullError);
     } finally {
       setIsLoading(false);
     }
-  }, [isConnected, username, currentRoomId, subscribeToRoom, wsSendMessage, saveToStorage]);
+  }, [connectionStatus, username, currentRoomId, subscribeToRoom, wsSendMessage, saveToStorage]);
 
   /**
    * Leave current room
@@ -328,14 +366,13 @@ export const useChat = (): UseChatReturn => {
     }
 
     try {
-      // Send leave message
-      const leaveMessage: ChatMessageDto = {
+      // Send leave message (should match JoinRoomDto format)
+      const leaveMessage = {
         roomId: currentRoomId,
         sender: username,
-        content: `${username} left the room`,
       };
       
-      wsSendMessage(DESTINATIONS.REMOVE_USER, leaveMessage);
+      wsSendMessage('chat.removeUser', leaveMessage);
       
       // Clear subscriptions
       subscriptionsRef.current.forEach(unsubscribe => unsubscribe());
@@ -350,14 +387,27 @@ export const useChat = (): UseChatReturn => {
   }, [currentRoomId, username, isConnected, wsSendMessage]);
 
   /**
-   * Send a chat message
+   * Send a chat message with enhanced error handling
    */
   const sendMessage = useCallback((content: string) => {
-    if (!isConnected || !username || !currentRoomId) {
-      setError(ERROR_MESSAGES.USERNAME_REQUIRED);
+    // Validate connection state
+    if (connectionStatus !== ConnectionStatus.CONNECTED) {
+      const statusMessage = `Cannot send message: Connection status is ${connectionStatus}`;
+      console.error('❌', statusMessage);
+      setError(`${ERROR_MESSAGES.SEND_MESSAGE_FAILED}: ${statusMessage}`);
       return;
     }
 
+    // Validate user and room state
+    if (!username || !currentRoomId) {
+      const missingState = !username ? 'username' : 'room';
+      const errorMsg = `Cannot send message: Missing ${missingState}`;
+      console.error('❌', errorMsg);
+      setError(`${ERROR_MESSAGES.SEND_MESSAGE_FAILED}: ${errorMsg}`);
+      return;
+    }
+
+    // Validate message content
     if (!content.trim()) {
       return; // Don't send empty messages
     }
@@ -369,14 +419,21 @@ export const useChat = (): UseChatReturn => {
         content: content.trim(),
       };
       
-      wsSendMessage(DESTINATIONS.SEND_MESSAGE, messageDto);
-      console.log('📤 Sent message:', content);
+      // Clear any previous errors before sending
+      if (error) {
+        setError(null);
+      }
+      
+      wsSendMessage('chat.sendMessage', messageDto);
+      console.log('📤 Sent message:', content.substring(0, 50) + (content.length > 50 ? '...' : ''));
       
     } catch (err) {
+      const errorDetail = err instanceof Error ? err.message : 'Unknown error';
+      const fullError = `${ERROR_MESSAGES.SEND_MESSAGE_FAILED}: ${errorDetail}`;
       console.error('❌ Failed to send message:', err);
-      setError(ERROR_MESSAGES.SEND_MESSAGE_FAILED);
+      setError(fullError);
     }
-  }, [isConnected, username, currentRoomId, wsSendMessage]);
+  }, [connectionStatus, username, currentRoomId, wsSendMessage, error]);
 
   /**
    * Create a new room (placeholder for future implementation)
@@ -410,19 +467,29 @@ export const useChat = (): UseChatReturn => {
   }, []);
 
   /**
-   * Auto-join last room when connected
+   * Auto-join last room when connected (with improved timing)
    */
   useEffect(() => {
-    if (isConnected && username && !currentRoomId) {
-      const savedRoomId = localStorage.getItem(STORAGE_CONFIG.KEYS.LAST_ROOM);
-      if (savedRoomId) {
-        joinRoom(savedRoomId);
-      } else {
-        // Join default room
-        joinRoom(DEFAULTS.ROOM_ID, DEFAULTS.ROOM_NAME);
-      }
+    if (connectionStatus === ConnectionStatus.CONNECTED && username && !currentRoomId) {
+      // Add small delay to ensure connection is fully established
+      const timer = setTimeout(() => {
+        try {
+          const savedRoomId = localStorage.getItem(STORAGE_CONFIG.KEYS.LAST_ROOM);
+          if (savedRoomId) {
+            joinRoom(savedRoomId);
+          } else {
+            // Join default room
+            joinRoom(DEFAULTS.ROOM_ID, DEFAULTS.ROOM_NAME);
+          }
+        } catch (err) {
+          console.error('❌ Error auto-joining room:', err);
+          setError('Failed to auto-join room');
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
     }
-  }, [isConnected, username, currentRoomId, joinRoom]);
+  }, [connectionStatus, username, currentRoomId, joinRoom]);
 
   /**
    * Cleanup subscriptions on unmount

@@ -1,13 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Client, IMessage } from '@stompjs/stompjs';
-import SockJS from 'sockjs-client';
+import { io, Socket } from 'socket.io-client';
 import { ConnectionStatus, UseWebSocketReturn } from '@/types/chat';
-import { ENV, DESTINATIONS, CONNECTION_CONFIG } from '@/lib/constants';
+import { ENV, CONNECTION_CONFIG } from '@/lib/constants';
 
 /**
- * Custom hook for WebSocket/STOMP connection management
+ * Custom hook for WebSocket/Socket.IO connection management
  * 
  * Provides a high-level interface for WebSocket operations including:
  * - Connection management with automatic reconnection
@@ -22,8 +21,8 @@ export const useWebSocket = (): UseWebSocketReturn => {
   );
   const [error, setError] = useState<string | null>(null);
   
-  // WebSocket client reference
-  const clientRef = useRef<Client | null>(null);
+  // Socket.IO client reference
+  const socketRef = useRef<Socket | null>(null);
   const subscriptionsRef = useRef<Map<string, () => void>>(new Map());
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -48,121 +47,99 @@ export const useWebSocket = (): UseWebSocketReturn => {
   }, []);
 
   /**
-   * Initialize WebSocket client with configuration
+   * Initialize Socket.IO client with configuration
    */
   const initializeClient = useCallback(() => {
-    if (clientRef.current) {
-      clientRef.current.deactivate();
+    if (socketRef.current) {
+      socketRef.current.disconnect();
     }
 
-    const client = new Client({
-      // Use SockJS for broader browser compatibility
-      webSocketFactory: () => new SockJS(`${ENV.WEBSOCKET_URL}${DESTINATIONS.WEBSOCKET_ENDPOINT}`),
-      
+    const socket = io(ENV.WEBSOCKET_URL, {
       // Connection configuration
-      connectHeaders: {
-        // Add any authentication headers here in future
-      },
+      timeout: CONNECTION_CONFIG.CONNECTION_TIMEOUT,
+      forceNew: false,
+      reconnection: true,
+      reconnectionAttempts: CONNECTION_CONFIG.MAX_RECONNECT_ATTEMPTS,
+      reconnectionDelay: CONNECTION_CONFIG.RECONNECT_DELAY,
+      reconnectionDelayMax: 30000,
       
-      // Heartbeat configuration for connection health
-      heartbeatIncoming: CONNECTION_CONFIG.HEARTBEAT_INCOMING,
-      heartbeatOutgoing: CONNECTION_CONFIG.HEARTBEAT_OUTGOING,
-      
-      // Connection timeout
-      connectionTimeout: CONNECTION_CONFIG.CONNECTION_TIMEOUT,
+      // Transport configuration
+      transports: ['websocket', 'polling'],
       
       // Debug configuration
-      debug: ENV.IS_DEVELOPMENT ? (str) => console.log('[STOMP Debug]', str) : undefined,
-      
-      // Connection lifecycle handlers
-      onConnect: () => {
-        console.log('🔗 WebSocket connected successfully');
-        setConnectionStatus(ConnectionStatus.CONNECTED);
-        setError(null);
-        reconnectAttemptsRef.current = 0;
-        clearReconnectTimeout();
-      },
-      
-      onDisconnect: () => {
-        console.log('🔌 WebSocket disconnected');
-        setConnectionStatus(ConnectionStatus.DISCONNECTED);
-        subscriptionsRef.current.clear();
-      },
-      
-      onStompError: (frame) => {
-        console.error('🚨 STOMP error:', frame.headers['message'], frame.body);
-        setError(`STOMP Error: ${frame.headers['message'] || 'Unknown error'}`);
-        setConnectionStatus(ConnectionStatus.ERROR);
-      },
-      
-      onWebSocketError: (event) => {
-        console.error('🚨 WebSocket error:', event);
-        setError('WebSocket connection error');
-        setConnectionStatus(ConnectionStatus.ERROR);
-      },
-      
-      onWebSocketClose: (event) => {
-        console.log('🔌 WebSocket connection closed:', event.code, event.reason);
-        
-        // Attempt reconnection if not manually disconnected
-        if (event.code !== 1000 && reconnectAttemptsRef.current < CONNECTION_CONFIG.MAX_RECONNECT_ATTEMPTS) {
-          const delay = getReconnectDelay(reconnectAttemptsRef.current);
-          
-          setConnectionStatus(ConnectionStatus.RECONNECTING);
-          setError(`Reconnecting in ${Math.ceil(delay / 1000)}s... (Attempt ${reconnectAttemptsRef.current + 1}/${CONNECTION_CONFIG.MAX_RECONNECT_ATTEMPTS})`);
-          
-          reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectAttemptsRef.current++;
-            console.log(`🔄 Reconnection attempt ${reconnectAttemptsRef.current}/${CONNECTION_CONFIG.MAX_RECONNECT_ATTEMPTS}`);
-            
-            if (clientRef.current) {
-              clientRef.current.activate();
-            }
-          }, delay);
-        } else if (reconnectAttemptsRef.current >= CONNECTION_CONFIG.MAX_RECONNECT_ATTEMPTS) {
-          setError('Connection failed after maximum retry attempts');
-          setConnectionStatus(ConnectionStatus.ERROR);
-        }
-      },
+      debug: ENV.IS_DEVELOPMENT,
     });
 
-    clientRef.current = client;
-    return client;
-  }, [getReconnectDelay, clearReconnectTimeout]);
+    // Connection lifecycle handlers
+    socket.on('connect', () => {
+      console.log('🔗 Socket.IO connected successfully:', socket.id);
+      setConnectionStatus(ConnectionStatus.CONNECTED);
+      setError(null);
+      reconnectAttemptsRef.current = 0;
+      clearReconnectTimeout();
+    });
+    
+    socket.on('disconnect', (reason) => {
+      console.log('🔌 Socket.IO disconnected:', reason);
+      setConnectionStatus(ConnectionStatus.DISCONNECTED);
+      subscriptionsRef.current.clear();
+    });
+    
+    socket.on('connect_error', (error) => {
+      console.error('🚨 Socket.IO connection error:', error);
+      setError(`Connection error: ${error.message}`);
+      setConnectionStatus(ConnectionStatus.ERROR);
+    });
+    
+    socket.on('reconnect_attempt', (attempt) => {
+      console.log(`🔄 Socket.IO reconnection attempt ${attempt}/${CONNECTION_CONFIG.MAX_RECONNECT_ATTEMPTS}`);
+      setConnectionStatus(ConnectionStatus.RECONNECTING);
+      setError(`Reconnecting... (Attempt ${attempt}/${CONNECTION_CONFIG.MAX_RECONNECT_ATTEMPTS})`);
+    });
+    
+    socket.on('reconnect_failed', () => {
+      console.error('❌ Socket.IO reconnection failed after maximum attempts');
+      setError('Connection failed after maximum retry attempts');
+      setConnectionStatus(ConnectionStatus.ERROR);
+    });
+
+    socketRef.current = socket;
+    return socket;
+  }, [clearReconnectTimeout]);
 
   /**
-   * Connect to WebSocket server
+   * Connect to Socket.IO server
    */
   const connect = useCallback(() => {
-    if (clientRef.current?.connected) {
-      console.log('⚠️ Already connected to WebSocket');
+    if (socketRef.current?.connected) {
+      console.log('⚠️ Already connected to Socket.IO');
       return;
     }
 
-    console.log('🚀 Connecting to WebSocket...');
+    console.log('🚀 Connecting to Socket.IO...');
     setConnectionStatus(ConnectionStatus.CONNECTING);
     setError(null);
     
-    const client = initializeClient();
-    client.activate();
+    const socket = initializeClient();
+    socket.connect();
   }, [initializeClient]);
 
   /**
-   * Disconnect from WebSocket server
+   * Disconnect from Socket.IO server
    */
   const disconnect = useCallback(() => {
-    console.log('🛑 Disconnecting from WebSocket...');
+    console.log('🛑 Disconnecting from Socket.IO...');
     
     clearReconnectTimeout();
     reconnectAttemptsRef.current = CONNECTION_CONFIG.MAX_RECONNECT_ATTEMPTS; // Prevent reconnection
     
-    // Unsubscribe from all subscriptions
+    // Clear all subscriptions
     subscriptionsRef.current.forEach(unsubscribe => unsubscribe());
     subscriptionsRef.current.clear();
     
-    if (clientRef.current) {
-      clientRef.current.deactivate();
-      clientRef.current = null;
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
     }
     
     setConnectionStatus(ConnectionStatus.DISCONNECTED);
@@ -170,23 +147,18 @@ export const useWebSocket = (): UseWebSocketReturn => {
   }, [clearReconnectTimeout]);
 
   /**
-   * Send message to specified destination
+   * Send message to specified event
    */
-  const sendMessage = useCallback((destination: string, body: any) => {
-    if (!clientRef.current?.connected) {
-      console.error('❌ Cannot send message: WebSocket not connected');
+  const sendMessage = useCallback((event: string, data: any) => {
+    if (!socketRef.current?.connected) {
+      console.error('❌ Cannot send message: Socket.IO not connected');
       setError('Cannot send message: Not connected to server');
       return;
     }
 
     try {
-      const messageBody = typeof body === 'string' ? body : JSON.stringify(body);
-      clientRef.current.publish({
-        destination,
-        body: messageBody,
-      });
-      
-      console.log('📤 Message sent to', destination, ':', messageBody);
+      socketRef.current.emit(event, data);
+      console.log('📤 Message sent to', event, ':', data);
     } catch (err) {
       console.error('❌ Failed to send message:', err);
       setError('Failed to send message');
@@ -194,41 +166,38 @@ export const useWebSocket = (): UseWebSocketReturn => {
   }, []);
 
   /**
-   * Subscribe to a destination and handle incoming messages
+   * Subscribe to an event and handle incoming messages
    */
-  const subscribe = useCallback((destination: string, callback: (message: any) => void) => {
-    if (!clientRef.current?.connected) {
-      console.error('❌ Cannot subscribe: WebSocket not connected');
+  const subscribe = useCallback((event: string, callback: (message: any) => void) => {
+    if (!socketRef.current?.connected) {
+      console.error('❌ Cannot subscribe: Socket.IO not connected');
       return () => {}; // Return empty unsubscribe function
     }
 
     try {
-      const subscription = clientRef.current.subscribe(destination, (message: IMessage) => {
-        try {
-          const parsedMessage = JSON.parse(message.body);
-          console.log('📥 Message received from', destination, ':', parsedMessage);
-          callback(parsedMessage);
-        } catch (parseError) {
-          console.error('❌ Failed to parse message:', parseError, message.body);
-          // Still call callback with raw message for debugging
-          callback({ raw: message.body, error: 'Parse failed' });
-        }
-      });
+      const eventHandler = (data: any) => {
+        console.log('📥 Message received from', event, ':', data);
+        callback(data);
+      };
+      
+      socketRef.current.on(event, eventHandler);
 
       // Store unsubscribe function
       const unsubscribe = () => {
-        subscription.unsubscribe();
-        subscriptionsRef.current.delete(destination);
-        console.log('🔕 Unsubscribed from', destination);
+        if (socketRef.current) {
+          socketRef.current.off(event, eventHandler);
+        }
+        subscriptionsRef.current.delete(event);
+        console.log('🔕 Unsubscribed from', event);
       };
 
-      subscriptionsRef.current.set(destination, unsubscribe);
-      console.log('🔔 Subscribed to', destination);
+      subscriptionsRef.current.set(event, unsubscribe);
+      console.log('🔔 Subscribed to', event);
       
       return unsubscribe;
     } catch (err) {
-      console.error('❌ Failed to subscribe to', destination, ':', err);
-      setError(`Failed to subscribe to ${destination}`);
+      console.error('❌ Failed to subscribe to', event, ':', err);
+      setError(`Failed to subscribe to ${event}`);
       return () => {}; // Return empty unsubscribe function
     }
   }, []);
@@ -247,7 +216,7 @@ export const useWebSocket = (): UseWebSocketReturn => {
    */
   useEffect(() => {
     if (ENV.IS_DEVELOPMENT) {
-      console.log('🔧 Development mode: Auto-connecting WebSocket');
+      console.log('🔧 Development mode: Auto-connecting Socket.IO');
       // Small delay to allow component to render
       const timer = setTimeout(() => connect(), 100);
       return () => clearTimeout(timer);

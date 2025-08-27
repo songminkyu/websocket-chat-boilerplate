@@ -8,14 +8,7 @@ import { useChat } from '@/hooks/useChat';
 import { VALIDATION, DEFAULTS } from '@/lib/constants';
 
 /**
- * Home page component with login and chat interface
- * 
- * Features:
- * - Username entry and validation
- * - Chat room interface
- * - Connection management
- * - Responsive design
- * - Loading and error states
+ * Home page component with compact messenger-style login and chat interface
  */
 export default function HomePage() {
   const [usernameInput, setUsernameInput] = useState('');
@@ -60,7 +53,6 @@ export default function HomePage() {
     const value = e.target.value;
     setUsernameInput(value);
     
-    // Clear error when user starts typing
     if (usernameError) {
       setUsernameError('');
     }
@@ -81,7 +73,6 @@ export default function HomePage() {
     try {
       await connect(usernameInput.trim());
     } catch (error) {
-      // Error is handled by the useChat hook
       console.error('Connection failed:', error);
     }
   };
@@ -98,184 +89,116 @@ export default function HomePage() {
   // If user is connected and has a username, show chat interface
   if (isConnected && username) {
     return (
-      <div className="h-screen flex flex-col">
-        {/* Header */}
-        <header className="bg-white border-b border-secondary-200 shadow-sm">
-          <div className="px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-xl font-bold text-secondary-900">
-                  WebSocket Chat Platform
-                </h1>
-                <p className="text-sm text-secondary-600">
-                  Connected as <span className="font-medium">{username}</span>
-                </p>
+      <div className="chat-container">
+        {/* Compact Header */}
+        <header className="chat-header">
+          <div className="flex items-center gap-3">
+            <div className="avatar-sm">
+              {username.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h1 className="font-semibold text-sm text-secondary-900">
+                {username}
+              </h1>
+              <div className="flex items-center gap-1">
+                <div className="status-online"></div>
+                <span className="text-meta">Online</span>
               </div>
-              
-              <Button
-                onClick={handleDisconnect}
-                variant="outline"
-                size="sm"
-              >
-                Disconnect
-              </Button>
             </div>
           </div>
+          
+          <button
+            onClick={handleDisconnect}
+            className="btn-icon"
+            title="Disconnect"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
         </header>
 
-        {/* Chat room */}
-        <div className="flex-1 overflow-hidden">
+        {/* Chat Room */}
+        <div className="flex-1 min-h-0">
           <ChatRoom
             roomId={DEFAULTS.ROOM_ID}
             roomName={DEFAULTS.ROOM_NAME}
-            showUserList={true}
+            showUserList={false}
           />
         </div>
       </div>
     );
   }
 
-  // Login/connection screen
+  // Compact login screen
   return (
     <div className="min-h-screen flex items-center justify-center bg-secondary-50 px-4">
-      <div className="w-full max-w-md">
-        {/* Logo/Title */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 mx-auto mb-4 bg-primary-600 rounded-full flex items-center justify-center">
-            <svg
-              className="w-8 h-8 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-              />
-            </svg>
+      <div className="w-full max-w-sm">
+        {/* Simple Header */}
+        <div className="text-center mb-6">
+          <div className="avatar-sm mx-auto mb-3">
+            💬
           </div>
-          <h1 className="text-3xl font-bold text-secondary-900 mb-2">
-            WebSocket Chat
+          <h1 className="text-xl font-bold text-secondary-900 mb-1">
+            Chat
           </h1>
-          <p className="text-secondary-600">
-            Enter your username to join the conversation
+          <p className="text-meta">
+            Enter your username to join
           </p>
         </div>
 
-        {/* Connection form */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <form onSubmit={handleConnect} className="space-y-6">
-            {/* Global error */}
+        {/* Compact Login Form */}
+        <div className="bg-white rounded-2xl shadow-sm border border-secondary-200 p-6">
+          <form onSubmit={handleConnect} className="space-y-4">
+            {/* Error Message */}
             {error && (
-              <div className="p-4 bg-error-50 border border-error-200 rounded-lg">
-                <div className="flex items-center gap-2 text-error-800">
-                  <svg
-                    className="w-5 h-5 flex-shrink-0"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <span className="text-sm font-medium">{error}</span>
-                </div>
+              <div className="text-center p-3 bg-red-50 border border-red-200 rounded-lg">
+                <span className="text-sm text-red-700">{error}</span>
               </div>
             )}
 
-            {/* Username input */}
-            <Input
-              label="Username"
-              placeholder="Enter your username..."
-              value={usernameInput}
-              onChange={handleUsernameChange}
-              error={usernameError}
-              disabled={isLoading}
-              required
-              autoComplete="username"
-              autoFocus
-              leftIcon={
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
-              }
-              helperText={`${VALIDATION.USERNAME.MIN_LENGTH}-${VALIDATION.USERNAME.MAX_LENGTH} characters, letters, numbers, and underscores only`}
-            />
+            {/* Username Input */}
+            <div>
+              <input
+                type="text"
+                value={usernameInput}
+                onChange={handleUsernameChange}
+                placeholder="Username"
+                disabled={isLoading}
+                className="input-compact w-full"
+                autoComplete="username"
+                autoFocus
+              />
+              {usernameError && (
+                <p className="text-meta text-red-500 mt-1">{usernameError}</p>
+              )}
+            </div>
 
-            {/* Connect button */}
-            <Button
+            {/* Connect Button */}
+            <button
               type="submit"
-              loading={isLoading}
               disabled={isLoading || !usernameInput.trim()}
-              fullWidth
-              size="lg"
-              rightIcon={
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 7l5 5m0 0l-5 5m5-5H6"
-                  />
-                </svg>
-              }
+              className="btn-compact w-full h-10 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Connecting...' : 'Join Chat'}
-            </Button>
+              {isLoading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Connecting...
+                </div>
+              ) : (
+                'Join Chat'
+              )}
+            </button>
           </form>
 
-          {/* Additional info */}
-          <div className="mt-6 pt-6 border-t border-secondary-200">
+          {/* Footer Info */}
+          <div className="mt-4 pt-4 border-t border-secondary-100">
             <div className="text-center">
-              <p className="text-xs text-secondary-500 mb-2">
-                Powered by WebSocket & STOMP Protocol
+              <p className="text-meta">
+                WebSocket Chat • Real-time messaging
               </p>
-              <div className="flex items-center justify-center gap-4 text-xs text-secondary-400">
-                <span className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-success-500 rounded-full" />
-                  Real-time
-                </span>
-                <span className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-primary-500 rounded-full" />
-                  Secure
-                </span>
-                <span className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-warning-500 rounded-full" />
-                  Fast
-                </span>
-              </div>
             </div>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-8 text-center">
-          <p className="text-sm text-secondary-500">
-            Built with Next.js 15 & Spring Boot 3
-          </p>
         </div>
       </div>
     </div>
