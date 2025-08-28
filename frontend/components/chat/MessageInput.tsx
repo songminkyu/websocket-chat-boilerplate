@@ -15,7 +15,7 @@ interface MessageInputProps {
 }
 
 /**
- * Compact MessageInput component for messenger-style chat
+ * Simple MessageInput component with text field and labeled send button
  */
 export const MessageInput: React.FC<MessageInputProps> = ({
   onSendMessage,
@@ -111,20 +111,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const isButtonDisabled = disabled || isSending || !isValidMessage();
 
   return (
-    <div className={clsx('flex items-end gap-3', className)}>
-      {/* Emoji/Attachment button */}
-      <button
-        className="btn-icon mb-1"
-        title="Add emoji"
-        disabled={disabled}
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      </button>
-
-      {/* Message input */}
-      <div className="flex-1 relative">
+    <div className={clsx('flex items-center gap-3', className)}>
+      {/* Simple message input */}
+      <div className="flex-1">
         <textarea
           ref={textareaRef}
           value={message}
@@ -134,29 +123,40 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           disabled={disabled}
           rows={1}
           className={clsx(
-            'input-compact w-full resize-none min-h-[40px] max-h-[100px]',
+            'w-full px-4 py-3 border border-gray-300 rounded-lg resize-none',
+            'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+            'text-sm bg-white',
             disabled && 'opacity-50 cursor-not-allowed'
           )}
           aria-label="Type your message"
+          style={{ minHeight: '48px', maxHeight: '100px' }}
         />
       </div>
 
-      {/* Send button */}
+      {/* Simple send button with clear label */}
       <button
         onClick={handleSendMessage}
         disabled={isButtonDisabled}
         className={clsx(
-          'btn-compact w-10 h-10 flex-shrink-0 mb-1',
-          'disabled:opacity-50 disabled:cursor-not-allowed'
+          'px-6 py-3 rounded-lg font-medium text-sm transition-colors',
+          'flex items-center gap-2',
+          isValidMessage() && !disabled && !isSending 
+            ? 'bg-blue-500 hover:bg-blue-600 text-white'
+            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
         )}
-        title="Send message"
       >
         {isSending ? (
-          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          <>
+            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            전송중...
+          </>
         ) : (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-          </svg>
+          <>
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+            전송
+          </>
         )}
       </button>
     </div>

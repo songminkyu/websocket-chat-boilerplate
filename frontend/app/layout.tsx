@@ -1,6 +1,6 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
-import '@/styles/globals.css';
+import './globals.css';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -8,17 +8,18 @@ const inter = Inter({
   variable: '--font-inter'
 });
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: '#3b82f6',
+};
+
 export const metadata: Metadata = {
   title: 'WebSocket Chat Platform',
   description: 'Real-time chat platform with WebSocket/STOMP protocol support',
   keywords: ['chat', 'websocket', 'stomp', 'real-time', 'messaging'],
   authors: [{ name: 'System Architecture Team' }],
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-  },
-  themeColor: '#3b82f6',
   manifest: '/manifest.json',
   icons: {
     icon: [

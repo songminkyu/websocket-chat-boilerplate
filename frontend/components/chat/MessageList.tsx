@@ -15,7 +15,7 @@ interface MessageListProps {
 }
 
 /**
- * Compact MessageList component for messenger-style chat
+ * Simple MessageList component with clear sender names in bubbles
  */
 export const MessageList: React.FC<MessageListProps> = ({
   messages,
@@ -76,59 +76,67 @@ export const MessageList: React.FC<MessageListProps> = ({
     return timeDiff < 5 * 60 * 1000; // 5 minutes
   };
 
-  /**
-   * Empty state component
-   */
-  const EmptyState = () => (
-    <div className="flex flex-col items-center justify-center h-full text-secondary-500 p-8">
-      <div className="avatar-sm mb-4 bg-secondary-300">
-        💬
-      </div>
-      <h3 className="font-medium text-sm mb-2">No messages yet</h3>
-      <p className="text-meta text-center">
-        Start the conversation by sending your first message
-      </p>
-    </div>
-  );
 
   return (
     <div
       className={clsx(
-        'flex flex-col h-full overflow-hidden bg-white',
+        'flex flex-col h-full overflow-hidden',
         className
       )}
     >
       {/* Messages container */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto"
+        className="flex-1 overflow-y-auto p-4 space-y-4"
         role="log"
         aria-label="Chat messages"
         aria-live="polite"
       >
         {messages.length === 0 ? (
-          <EmptyState />
+          <div className="flex flex-col items-center justify-center h-full text-gray-500">
+            <div className="text-4xl mb-4">💬</div>
+            <h3 className="font-medium text-lg mb-2">아직 메시지가 없습니다</h3>
+            <p className="text-sm text-center">
+              첫 번째 메시지를 보내서 대화를 시작해보세요
+            </p>
+          </div>
         ) : (
-          <div className="py-2">
+          <>
             {messages.map((message, index) => {
-              const previousMessage = index > 0 ? messages[index - 1] : undefined;
-              const isGrouped = shouldGroupWithPrevious(message, previousMessage);
               const isCurrentUser = currentUsername === message.sender;
-
+              
               return (
-                <MessageItem
+                <div
                   key={message.id}
-                  message={message}
-                  isCurrentUser={isCurrentUser}
-                  isGrouped={isGrouped}
                   className={clsx(
-                    // Add spacing between different senders
-                    !isGrouped && index > 0 && 'mt-3'
+                    'flex',
+                    isCurrentUser ? 'justify-end' : 'justify-start'
                   )}
-                />
+                >
+                  <div
+                    className={clsx(
+                      'max-w-xs lg:max-w-md px-4 py-2 rounded-2xl',
+                      isCurrentUser 
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-200 text-gray-900'
+                    )}
+                  >
+                    {/* Sender name - always show clearly */}
+                    <div className={clsx(
+                      'text-xs font-semibold mb-1',
+                      isCurrentUser ? 'text-blue-100' : 'text-gray-600'
+                    )}>
+                      {message.sender}
+                    </div>
+                    {/* Message content */}
+                    <div className="text-sm">
+                      {message.content}
+                    </div>
+                  </div>
+                </div>
               );
             })}
-          </div>
+          </>
         )}
         
         {/* Scroll anchor */}

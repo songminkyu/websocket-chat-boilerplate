@@ -44,19 +44,33 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     return sender.charAt(0).toUpperCase();
   };
 
+  /**
+   * Get consistent color for user avatar
+   */
+  const getUserColor = (username: string) => {
+    const colors = [
+      'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-red-500', 
+      'bg-yellow-500', 'bg-indigo-500', 'bg-pink-500', 'bg-teal-500'
+    ];
+    const index = username.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+    return colors[index];
+  };
+
   // System messages (join/leave/system)
   if (isSystemMessage) {
     return (
       <div
         className={clsx(
-          'flex items-center justify-center py-1',
+          'flex items-center justify-center py-2',
           className
         )}
         role="status"
         aria-label={`System message: ${message.content}`}
       >
-        <div className="msg-bubble-system">
-          {message.content}
+        <div className="system-message">
+          <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+            {message.content}
+          </span>
         </div>
       </div>
     );
@@ -66,55 +80,54 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   return (
     <div
       className={clsx(
-        'message-item px-4 py-1',
-        isCurrentUser ? 'message-item-sent' : 'message-item-received',
+        'message-bubble-item',
+        isCurrentUser ? 'message-sent' : 'message-received',
         className
       )}
       role="article"
       aria-label={`Message from ${message.sender}`}
     >
-      {/* Avatar (only for non-grouped messages from others) */}
-      {!isCurrentUser && !isGrouped && (
-        <div className="avatar-xs bg-primary-500 flex-shrink-0">
-          {getSenderInitials(message.sender)}
+      {/* Left side - Avatar for received messages */}
+      {!isCurrentUser && (
+        <div className="message-avatar">
+          {!isGrouped && (
+            <div className={clsx(
+              'w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium',
+              getUserColor(message.sender)
+            )}>
+              {getSenderInitials(message.sender)}
+            </div>
+          )}
         </div>
       )}
-      
-      {/* Spacing for grouped messages */}
-      {!isCurrentUser && isGrouped && <div className="w-6 flex-shrink-0"></div>}
 
-      <div className="flex flex-col min-w-0 flex-1">
-        {/* Sender name (only for non-grouped messages from others) */}
+      {/* Message content */}
+      <div className="message-content">
+        {/* Sender name for received messages (non-grouped) */}
         {!isCurrentUser && !isGrouped && (
-          <div className="text-meta mb-1 px-1">
+          <div className="message-sender">
             {message.sender}
           </div>
         )}
 
         {/* Message bubble */}
         <div className={clsx(
-          'msg-bubble relative group',
-          isCurrentUser ? 'msg-bubble-sent' : 'msg-bubble-received',
-          // Grouping adjustments - less rounded corners for grouped messages
-          isGrouped && isCurrentUser && 'rounded-tr-lg',
-          isGrouped && !isCurrentUser && 'rounded-tl-lg',
+          'message-bubble group',
+          isCurrentUser ? 'bubble-sent' : 'bubble-received'
         )}>
-          {/* Message content */}
-          <div className="leading-relaxed">
+          <div className="bubble-content">
             {message.content}
           </div>
-
-          {/* Timestamp - shows on hover or for current user */}
-          <div
-            className={clsx(
-              'text-xs mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200',
-              isCurrentUser ? 'text-white/60 text-right opacity-70' : 'text-secondary-500'
-            )}
-          >
+          
+          {/* Timestamp */}
+          <div className="bubble-timestamp">
             {formatTimestamp(message.timestamp)}
           </div>
         </div>
       </div>
+
+      {/* Right side spacer for received messages */}
+      {!isCurrentUser && <div className="message-spacer" />}
     </div>
   );
 };

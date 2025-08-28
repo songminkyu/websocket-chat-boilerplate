@@ -64,8 +64,9 @@
   }
 }
 
-/* Messenger-Style Components */
+/* Simple Chat UI Components - Removed complex styles */
 @layer components {
+
   /* Compact Avatar */
   .avatar-sm {
     @apply w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs font-medium;
@@ -182,21 +183,4 @@
   }
 }
 
-/* Mobile-first responsive */
-@media (max-width: 768px) {
-  .msg-bubble {
-    @apply max-w-[280px];
-  }
-  
-  .chat-header {
-    @apply px-3 py-2;
-  }
-  
-  .chat-messages {
-    @apply px-3;
-  }
-  
-  .chat-input {
-    @apply px-3 py-2;
-  }
-}
+/* Desktop-optimized, no mobile responsive needed per requirements */

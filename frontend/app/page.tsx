@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChatRoom } from '@/components/chat/ChatRoom';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
+import { MessageList } from '@/components/chat/MessageList';
+import { MessageInput } from '@/components/chat/MessageInput';
 import { useChat } from '@/hooks/useChat';
 import { VALIDATION, DEFAULTS } from '@/lib/constants';
+import { UserSession } from '@/types/chat';
 
 /**
  * Home page component with compact messenger-style login and chat interface
@@ -13,14 +13,18 @@ import { VALIDATION, DEFAULTS } from '@/lib/constants';
 export default function HomePage() {
   const [usernameInput, setUsernameInput] = useState('');
   const [usernameError, setUsernameError] = useState('');
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
   const {
     isConnected,
     username,
     isLoading,
     error,
+    activeUsers,
+    messages,
     connect,
     disconnect,
+    sendMessage,
   } = useChat();
 
   /**
@@ -86,45 +90,67 @@ export default function HomePage() {
     setUsernameError('');
   };
 
-  // If user is connected and has a username, show chat interface
+  const getInitials = (name: string) => {
+    return name.charAt(0).toUpperCase();
+  };
+
+  const getUserColor = (username: string) => {
+    const colors = [
+      'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-red-500', 
+      'bg-yellow-500', 'bg-indigo-500', 'bg-pink-500', 'bg-teal-500'
+    ];
+    const index = username.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+    return colors[index];
+  };
+
+  // If user is connected and has a username, show simple 3-area chat interface
   if (isConnected && username) {
     return (
-      <div className="chat-container">
-        {/* Compact Header */}
-        <header className="chat-header">
-          <div className="flex items-center gap-3">
-            <div className="avatar-sm">
-              {username.charAt(0).toUpperCase()}
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        {/* 1. 상단 유저 목록 - Top User List */}
+        <div className="bg-white border-b border-gray-200 p-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-gray-900">채팅방 참여자</h2>
+              <button
+                onClick={handleDisconnect}
+                className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+              >
+                나가기
+              </button>
             </div>
-            <div>
-              <h1 className="font-semibold text-sm text-secondary-900">
-                {username}
-              </h1>
-              <div className="flex items-center gap-1">
-                <div className="status-online"></div>
-                <span className="text-meta">Online</span>
-              </div>
+            <div className="flex items-center gap-4 overflow-x-auto">
+              {activeUsers.map((user) => (
+                <div key={user.username} className="flex items-center gap-2 flex-shrink-0">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold ${getUserColor(user.username)}`}>
+                    {getInitials(user.username)}
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">{user.username}</span>
+                </div>
+              ))}
             </div>
           </div>
-          
-          <button
-            onClick={handleDisconnect}
-            className="btn-icon"
-            title="Disconnect"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
-        </header>
+        </div>
 
-        {/* Chat Room */}
-        <div className="flex-1 min-h-0">
-          <ChatRoom
-            roomId={DEFAULTS.ROOM_ID}
-            roomName={DEFAULTS.ROOM_NAME}
-            showUserList={false}
-          />
+        {/* 2. 중앙 채팅창 - Center Chat Area */}
+        <div className="flex-1 overflow-hidden">
+          <div className="max-w-4xl mx-auto h-full">
+            <MessageList 
+              messages={messages}
+              currentUsername={username}
+            />
+          </div>
+        </div>
+
+        {/* 3. 하단 채팅 입력창 - Bottom Input Area */}
+        <div className="bg-white border-t border-gray-200 p-4">
+          <div className="max-w-4xl mx-auto">
+            <MessageInput
+              onSendMessage={sendMessage}
+              disabled={!isConnected}
+              placeholder="메시지를 입력하세요..."
+            />
+          </div>
         </div>
       </div>
     );
