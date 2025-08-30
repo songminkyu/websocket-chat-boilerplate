@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom scrollbar */
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* Animation for new messages */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message-animation {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        /* Typing indicator animation */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .typing-dot {
+            animation: blink 1.5s infinite;
+        }
+        
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 h-screen flex items-center justify-center">
+    <div class="container mx-auto max-w-4xl">
+        <div class="bg-white rounded-xl shadow-xl overflow-hidden">
+            <!-- Header -->
+            <div class="bg-indigo-600 text-white p-4 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center">
+                        <i class="fas fa-comments text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-xl">WebSocket Chat</h1>
+                        <p class="text-xs text-indigo-200" id="connection-status">Connecting...</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative group">
+                        <div class="flex items-center space-x-2 cursor-pointer">
+                            <div class="w-8 h-8 rounded-full bg-indigo-400 overflow-hidden">
+                                <img src="https://via.placeholder.com/32" alt="Profile" id="profile-image" class="w-full h-full object-cover">
+                            </div>
+                            <span id="profile-name" class="text-sm font-medium">Guest</span>
+                        </div>
+                        <div class="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg z-10 hidden group-hover:block p-3 space-y-2">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-10 h-10 rounded-full bg-indigo-400 overflow-hidden">
+                                    <img src="https://via.placeholder.com/32" alt="Profile" id="profile-image-preview" class="w-full h-full object-cover">
+                                </div>
+                                <input type="text" id="profile-name-input" class="flex-1 border rounded px-2 py-1 text-sm" value="Guest">
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <label for="profile-image-upload" class="cursor-pointer text-indigo-600 hover:text-indigo-800">
+                                    <i class="fas fa-image mr-1"></i>Change Image
+                                </label>
+                                <button id="save-profile" class="bg-indigo-600 text-white px-2 py-1 rounded text-xs hover:bg-indigo-700">
+                                    Save
+                                </button>
+                            </div>
+                            <input type="file" id="profile-image-upload" accept="image/*" class="hidden">
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="clear-chat" class="p-2 rounded-full hover:bg-indigo-500 transition">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                        <button id="theme-toggle" class="p-2 rounded-full hover:bg-indigo-500 transition">
+                            <i class="fas fa-moon"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Chat messages -->
+            <div class="chat-messages h-96 overflow-y-auto p-4 space-y-3" id="chat-messages">
+                <!-- Welcome message -->
+                <div class="flex justify-center">
+                    <div class="bg-gray-100 rounded-lg p-3 max-w-xs text-center">
+                        <p class="text-gray-600 text-sm">Welcome to WebSocket Chat Demo! Start messaging below.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Typing indicator -->
+            <div class="px-4 py-2 hidden" id="typing-indicator">
+                <div class="flex items-center space-x-1 bg-gray-100 rounded-full py-2 px-3 w-max">
+                    <div class="typing-dot w-2 h-2 bg-gray-500 rounded-full"></div>
+                    <div class="typing-dot w-2 h-2 bg-gray-500 rounded-full"></div>
+                    <div class="typing-dot w-2 h-2 bg-gray-500 rounded-full"></div>
+                </div>
+            </div>
+            
+            <!-- Message input -->
+            <div class="border-t p-4 bg-gray-50">
+                <form id="message-form" class="flex space-x-2">
+                    <div class="flex-1 flex items-center space-x-2">
+                        <label for="image-upload" class="cursor-pointer p-2 text-gray-500 hover:text-indigo-600 transition">
+                            <i class="fas fa-image"></i>
+                            <input type="file" id="image-upload" accept="image/*" class="hidden">
+                        </label>
+                        <input 
+                            type="text" 
+                            id="message-input" 
+                            placeholder="Type a message..." 
+                            class="flex-1 border rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            autocomplete="off"
+                        >
+                    </div>
+                    <button 
+                        type="submit" 
+                        class="bg-indigo-600 text-white rounded-full p-2 w-10 h-10 flex items-center justify-center hover:bg-indigo-700 transition"
+                    >
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+                <div id="image-preview" class="mt-2 hidden">
+                    <div class="relative inline-block">
+                        <img id="preview-image" src="#" alt="Preview" class="h-20 rounded-lg object-cover">
+                        <button id="remove-image" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                            ×
+                        </button>
+                    </div>
+                </div>
+                <div class="flex justify-between mt-2 text-xs text-gray-500">
+                    <div>
+                        <span id="online-count">0</span> online
+                    </div>
+                    <div>
+                        <span id="message-count">0</span> messages
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Connection settings (hidden by default) -->
+        <div class="mt-4 bg-white rounded-lg shadow p-4 hidden" id="settings-panel">
+            <h3 class="font-bold mb-2">Connection Settings</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">WebSocket URL</label>
+                    <input 
+                        type="text" 
+                        id="ws-url" 
+                        value="wss://echo.websocket.org" 
+                        class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                </div>
+                <div class="flex space-x-2">
+                    <button id="connect-btn" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition">
+                        Connect
+                    </button>
+                    <button id="disconnect-btn" class="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300 transition">
+                        Disconnect
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // UI Elements
+            const messageForm = document.getElementById('message-form');
+            const messageInput = document.getElementById('message-input');
+            const profileImage = document.getElementById('profile-image');
+            const profileName = document.getElementById('profile-name');
+            const imageUpload = document.getElementById('image-upload');
+            const imagePreview = document.getElementById('image-preview');
+            const previewImage = document.getElementById('preview-image');
+            const removeImage = document.getElementById('remove-image');
+            const chatMessages = document.getElementById('chat-messages');
+            const connectionStatus = document.getElementById('connection-status');
+            const onlineCount = document.getElementById('online-count');
+            const messageCount = document.getElementById('message-count');
+            const clearChatBtn = document.getElementById('clear-chat');
+            const themeToggle = document.getElementById('theme-toggle');
+            const typingIndicator = document.getElementById('typing-indicator');
+            const settingsPanel = document.getElementById('settings-panel');
+            const wsUrlInput = document.getElementById('ws-url');
+            const connectBtn = document.getElementById('connect-btn');
+            const disconnectBtn = document.getElementById('disconnect-btn');
+            
+            // WebSocket variables
+            let socket;
+            let isTyping = false;
+            let typingTimeout;
+            let messageCounter = 0;
+            let onlineUsers = 0;
+            
+            // Initialize with mock WebSocket server (echo.websocket.org)
+            connectToWebSocket('wss://echo.websocket.org');
+            
+            // Event Listeners
+            messageForm.addEventListener('submit', sendMessage);
+            messageInput.addEventListener('input', handleTyping);
+            clearChatBtn.addEventListener('click', clearChat);
+            themeToggle.addEventListener('click', toggleTheme);
+            connectBtn.addEventListener('click', handleConnect);
+            disconnectBtn.addEventListener('click', handleDisconnect);
+            imageUpload.addEventListener('change', handleImageUpload);
+            removeImage.addEventListener('click', removeUploadedImage);
+
+            // Profile elements
+            const profileImagePreview = document.getElementById('profile-image-preview');
+            const profileNameInput = document.getElementById('profile-name-input');
+            const profileImageUpload = document.getElementById('profile-image-upload');
+            const saveProfileBtn = document.getElementById('save-profile');
+
+            // Set default profile
+            setRandomProfile();
+
+            // Profile editing
+            profileImageUpload.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        profileImagePreview.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            saveProfileBtn.addEventListener('click', function() {
+                profileImage.src = profileImagePreview.src;
+                profileName.textContent = profileNameInput.value;
+            });
+
+            // Functions
+            function setRandomProfile() {
+                const colors = ['indigo', 'blue', 'green', 'red', 'purple', 'pink', 'yellow'];
+                const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                const randomId = Math.floor(Math.random() * 1000);
+                
+                profileImage.src = `https://api.dicebear.com/7.x/initials/svg?seed=User${randomId}&backgroundColor=${randomColor}`;
+                profileName.textContent = `User${randomId}`;
+            }
+
+            function handleImageUpload(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        previewImage.src = event.target.result;
+                        imagePreview.classList.remove('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+
+            function removeUploadedImage() {
+                imageUpload.value = '';
+                imagePreview.classList.add('hidden');
+            }
+            
+            // Show settings panel when clicking connection status
+            connectionStatus.addEventListener('click', () => {
+                settingsPanel.classList.toggle('hidden');
+            });
+            
+            // Functions
+            function connectToWebSocket(url) {
+                try {
+                    socket = new WebSocket(url);
+                    
+                    socket.onopen = function(e) {
+                        connectionStatus.textContent = 'Connected';
+                        connectionStatus.classList.remove('text-indigo-200');
+                        connectionStatus.classList.add('text-green-300');
+                        updateOnlineUsers(1); // Simulate user joining
+                    };
+                    
+                    socket.onmessage = function(event) {
+                        // Simulate typing indicator from "server"
+                        if (Math.random() > 0.7) {
+                            simulateTyping();
+                        }
+                        
+                        // Delay the response to simulate real chat
+                        setTimeout(() => {
+                            const message = event.data;
+                            if (message.startsWith('OnlineUsers:')) {
+                                updateOnlineUsers(parseInt(message.split(':')[1]));
+                            } else {
+                                displayMessage(message, 'received');
+                            }
+                        }, 500 + Math.random() * 1000);
+                    };
+                    
+                    socket.onclose = function(event) {
+                        if (event.wasClean) {
+                            connectionStatus.textContent = 'Disconnected';
+                        } else {
+                            connectionStatus.textContent = 'Connection lost';
+                        }
+                        connectionStatus.classList.remove('text-green-300');
+                        connectionStatus.classList.add('text-indigo-200');
+                        updateOnlineUsers(0);
+                    };
+                    
+                    socket.onerror = function(error) {
+                        connectionStatus.textContent = 'Connection error';
+                        connectionStatus.classList.remove('text-green-300');
+                        connectionStatus.classList.add('text-red-300');
+                    };
+                } catch (error) {
+                    console.error('WebSocket error:', error);
+                    connectionStatus.textContent = 'Connection failed';
+                    connectionStatus.classList.remove('text-green-300');
+                    connectionStatus.classList.add('text-red-300');
+                }
+            }
+            
+            function sendMessage(e) {
+                e.preventDefault();
+                
+                const message = messageInput.value.trim();
+                if (message === '') return;
+                
+                // Display the message immediately in the UI
+                displayMessage(message, 'sent');
+                
+                // Send the message to WebSocket server
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(message);
+                } else {
+                    // If not connected, simulate echo
+                    setTimeout(() => {
+                        displayMessage(message, 'received');
+                    }, 500);
+                }
+                
+                // Clear input and reset typing state
+                messageInput.value = '';
+                isTyping = false;
+                clearTimeout(typingTimeout);
+                typingIndicator.classList.add('hidden');
+                
+                // Update message counter
+                messageCounter++;
+                messageCount.textContent = messageCounter;
+            }
+            
+            function displayMessage(message, type) {
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('flex', 'message-animation');
+                
+                if (type === 'sent') {
+                    messageElement.classList.add('justify-end');
+                    messageElement.innerHTML = `
+                        <div class="flex items-end space-x-2">
+                            <div class="flex flex-col items-end">
+                                <span class="text-xs font-medium text-indigo-100">${profileName.textContent}</span>
+                                <div class="bg-indigo-600 text-white rounded-l-xl rounded-br-xl px-4 py-2 max-w-xs lg:max-w-md">
+                                    <p>${message}</p>
+                                    <p class="text-xs text-indigo-200 text-right mt-1">${formatTime()}</p>
+                                </div>
+                            </div>
+                            <div class="w-8 h-8 rounded-full bg-indigo-400 overflow-hidden">
+                                <img src="${profileImage.src}" alt="${profileName.textContent}" class="w-full h-full object-cover">
+=======
+                                    <p>${message}</p>
+                                    <p class="text-xs text-indigo-200 text-right mt-1">${formatTime()}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    messageElement.classList.add('justify-start');
+                    messageElement.innerHTML = `
+                        <div class="flex items-end space-x-2">
+                            <div class="w-8 h-8 rounded-full bg-gray-300 overflow-hidden">
+                                <img src="https://api.dicebear.com/7.x/initials/svg?seed=Bot&backgroundColor=gray" alt="Bot" class="w-full h-full object-cover">
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-xs font-medium text-gray-600">Bot</span>
+                                <div class="bg-gray-200 text-gray-800 rounded-r-xl rounded-bl-xl px-4 py-2 max-w-xs lg:max-w-md">
+                                    <p>${message}</p>
+                                    <p class="text-xs text-gray-500 text-right mt-1">${formatTime()}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                chatMessages.appendChild(messageElement);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            function handleTyping() {
+                if (!isTyping) {
+                    isTyping = true;
+                    // Simulate sending typing indicator to server
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send('User is typing...');
+                    }
+                    typingIndicator.classList.remove('hidden');
+                }
+                
+                // Reset typing indicator after 2 seconds of inactivity
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    isTyping = false;
+                    typingIndicator.classList.add('hidden');
+                }, 2000);
+            }
+            
+            function simulateTyping() {
+                typingIndicator.classList.remove('hidden');
+                setTimeout(() => {
+                    typingIndicator.classList.add('hidden');
+                }, 1500 + Math.random() * 1500);
+            }
+            
+            function clearChat() {
+                chatMessages.innerHTML = `
+                    <div class="flex justify-center">
+                        <div class="bg-gray-100 rounded-lg p-3 max-w-xs text-center">
+                            <p class="text-gray-600 text-sm">Chat cleared. Start a new conversation!</p>
+                        </div>
+                    </div>
+                `;
+                messageCounter = 0;
+                messageCount.textContent = messageCounter;
+            }
+            
+            function toggleTheme() {
+                document.body.classList.toggle('bg-gray-800');
+                document.body.classList.toggle('bg-gray-100');
+                
+                const chatContainer = document.querySelector('.container > div');
+                chatContainer.classList.toggle('bg-white');
+                chatContainer.classList.toggle('bg-gray-700');
+                
+                const icon = themeToggle.querySelector('i');
+                if (icon.classList.contains('fa-moon')) {
+                    icon.classList.remove('fa-moon');
+                    icon.classList.add('fa-sun');
+                } else {
+                    icon.classList.remove('fa-sun');
+                    icon.classList.add('fa-moon');
+                }
+            }
+            
+            function updateOnlineUsers(count) {
+                onlineUsers = count;
+                onlineCount.textContent = onlineUsers;
+            }
+            
+            function formatTime() {
+                const now = new Date();
+                return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+            
+            function handleConnect() {
+                const url = wsUrlInput.value.trim();
+                if (url) {
+                    connectToWebSocket(url);
+                    settingsPanel.classList.add('hidden');
+                }
+            }
+            
+            function handleDisconnect() {
+                if (socket) {
+                    socket.close();
+                }
+                settingsPanel.classList.add('hidden');
+            }
+            
+            // Simulate some initial messages
+            setTimeout(() => {
+                displayMessage("Hello there! 👋", 'received');
+                messageCounter++;
+                messageCount.textContent = messageCounter;
+            }, 1000);
+            
+            setTimeout(() => {
+                displayMessage("Welcome to the chat demo!", 'received');
+                messageCounter++;
+                messageCount.textContent = messageCounter;
+            }, 2500);
+        });
+    </script>
+</body>
+</html>
